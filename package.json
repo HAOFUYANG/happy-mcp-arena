@@ -1,0 +1,30 @@
+{
+  "name": "happy-mcp-arena",
+  "version": "1.0.0",
+  "description": "Local MCP server for happy arena",
+  "type": "module",
+  "publisher": "HaoFuYang",
+  "main": "dist/mcp.js",
+  "bin": {
+    "happy-mcp-arena": "dist/mcp.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "start": "node dist/mcp.js",
+    "dev": "DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector node dist/mcp.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0",
+    "@modelcontextprotocol/inspector": "^0.17.2"
+  }
+}
