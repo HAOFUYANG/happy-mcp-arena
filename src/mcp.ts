@@ -10,13 +10,16 @@ const server = new McpServer({
 });
 
 // 提取baseUrl
-const BASE_URL = "http://test-cn.your-api-server.com/api";
+const BASE_URL = "http://127.0.0.1:4523";
+const token = "thisIsAToken";
 
 // 工具函数：发送HTTP请求并处理响应
 async function sendHttpRequest(
   endpoint: string,
   options: { method: string; headers?: Record<string, string> }
 ) {
+  console.log("endpoint :>> ", endpoint);
+  console.log("options :>> ", options);
   const res = await fetch(endpoint, {
     method: options.method,
     headers: options.headers,
@@ -42,7 +45,7 @@ async function sendHttpRequest(
   return {
     content: [
       {
-        type: "text",
+        type: "text" as const,
         text: `${options.method} ${endpoint}\nStatus: ${status}\n\n${responseText}`,
       },
     ],
@@ -55,41 +58,31 @@ server.registerTool(
   "getVersionDetailByUrl",
   {
     description:
-      "根据用户提供的 URL 解析其中的 id 参数，并调用真实接口获取版本详情数据。",
+      "根据用户提供的 URL 解析其中的 id(版本ID) 参数，使用这个id调用查询当前契约详情的接口获取契约信息。",
     inputSchema: {
       url: z
         .string()
         .describe(
           "包含 id 查询参数的完整 URL，例如 http://127.0.0.1:8080/happy-mcp/start/#/detail?id=121242"
         ),
-      appId: z
-        .union([z.string(), z.number()])
-        .optional()
-        .describe("可选：应用ID，用于请求 query 参数 appId"),
-      cookie: z
-        .string()
-        .optional()
-        .describe("可选：附加到请求的 Cookie 头部，如 sessionTick=...;"),
     },
   },
-  async (args) => {
-    const { url, appId, cookie } = args as {
+  async (args, _extra) => {
+    console.log("args :>> ", args);
+    const { url } = args as {
       url: string;
-      appId?: string | number;
-      cookie?: string;
     };
     const idMatch = url.match(/[?&#]id=([^&#]+)/);
     const id = idMatch ? decodeURIComponent(idMatch[1]) : null;
+    // ⚠️这里要做一次测试
     if (!id) throw new Error("未在 URL 中找到 id 参数");
-
-    const endpoint = `${BASE_URL}/api/version/get?id=${encodeURIComponent(id)}${
-      appId != null ? `&appId=${encodeURIComponent(String(appId))}` : ""
-    }`;
+    const endpoint = `${BASE_URL}/m1/2751432-384917-default/api/api/version/get?id=${encodeURIComponent(
+      id
+    )}`;
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      ...(cookie ? { Cookie: cookie } : {}),
+      token,
     };
-
     return await sendHttpRequest(endpoint, { method: "GET", headers });
   }
 );
@@ -158,7 +151,7 @@ server.registerTool(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: JSON.stringify({ data }, null, 2),
         },
       ],
@@ -190,7 +183,7 @@ server.registerTool(
     return {
       content: [
         {
-          type: "text",
+          type: "text" as const,
           text: JSON.stringify({ data }, null, 2),
         },
       ],

@@ -88,11 +88,12 @@
   - 错误处理：是否统一包装（拦截器、自定义错误类）、返回结构是否 `{ code, message, result }`。
   - 代码格式：参考项目中的 `eslint`、`prettier` 配置，保持风格一致。
 - 未找到封装的 api 的 http 请求方法文件，则给用户提供 `Fetch` `Axios` 等前端请求选项让用户选择后生成，并提示用户提供正确封装路径以便回写。
+- 由于项目中没有找到现有的 `HTTP` 请求封装文件，告知用户，但是不主动进行 axios 文件的生成
 
 ## 代码生成策略
 
-- 函数命名：基于 `operation.operationId` 或 `summary` 推导，遵循项目命名规范，避免导出冲突。
-- HTTP 方法与路径：映射 `operation.method` 与 `operation.path`，处理路径参数（`/api/{id}` → 动态模板）。
+- 函数命名：基于 `info.name` 或 `info.path` 推导，遵循项目命名规范，避免导出冲突。
+- HTTP 方法与路径：映射 `info.method` 与 `info.path`，处理路径参数（`/api/{id}` → 动态模板）。
 - 参数处理：
   - `parameters`：`in: "query"` 转换为查询字符串；`in: "path"` 作为函数参数拼接到路径。
   - `requestBody`：按 `content["application/json"].schema` 推导 `payload` 类型/结构。
@@ -101,6 +102,81 @@
 - 错误处理：遵循项目现有模式；无法识别时使用 `try/catch` 并抛错或返回统一错误结构（与项目一致）。
 - 注释：为函数添加 JSDoc，包括参数说明、错误、示例调用，便于 IDE 使用。
 - 幂等性：检测目标文件是否已有同名函数或相同 `path`+`method` 实现，避免重复；冲突时支持重命名或提示覆盖。
+- 同时请结合我下 main 的`代码生成举例说明`综合分析
+
+## 代码生成举例说明
+
+- 请看如下代码案例：
+
+```js
+export default class CommonApi {
+  /**
+   * 获取通用列表
+   * @param data 查询参数（分页、筛选等）
+   * @returns Promise
+   */
+  static list(data: Record<string, any>) {
+    return request({
+      url: "/common/list",
+      method: "post",
+      data,
+    });
+  }
+
+  /**
+   * 获取详情
+   * @param id 资源ID
+   * @returns Promise
+   */
+  static detail(id: string) {
+    return request({
+      url: `/common/detail/${id}`,
+      method: "get",
+    });
+  }
+
+  /**
+   * 新增数据
+   * @param data 提交的实体对象
+   * @returns Promise
+   */
+  static create(data: Record<string, any>) {
+    return request({
+      url: "/common/create",
+      method: "post",
+      data,
+    });
+  }
+
+  /**
+   * 更新数据
+   * @param id 资源ID
+   * @param data 更新的实体对象
+   * @returns Promise
+   */
+  static update(id: string, data: Record<string, any>) {
+    return request({
+      url: `/common/update/${id}`,
+      method: "put",
+      data,
+    });
+  }
+
+  /**
+   * 删除数据
+   * @param id 资源ID
+   * @returns Promise
+   */
+  static delete(id: string) {
+    return request({
+      url: `/common/delete/${id}`,
+      method: "delete",
+    });
+  }
+}
+```
+
+这段代码案例展示了一个基于 `CommonApi` 类的前端请求代码，包含了获取通用列表、获取详情、新增数据、更新数据、删除数据等常见操作。每个方法都有详细的 JSDoc 注释，包括参数说明、返回值类型、错误处理等，便于开发者使用和维护。你会发现代码中的`return request({})`，说明是使用 `request` 封装的 HTTP 请求方法，那么你生成的代码就无需要重新封装，直接按照你读取的代码案例生成，同时，为什么代码中的`url`没有域名，说明其域名已经被封装完成，你只需要结合`info.path`完成 url 即可。
 
 ## 输出与写入选项
 
