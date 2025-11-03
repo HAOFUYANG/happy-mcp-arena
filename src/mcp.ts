@@ -13,28 +13,7 @@ const server = new McpServer({
 const BASE_URL = "http://127.0.0.1:4523";
 const token = "thisIsAToken";
 
-// 辅助函数：从结构化数据自动生成content
-function generateContentFromStructured(
-  structuredContent: any,
-  endpoint: string
-) {
-  // 优先使用response中的method，如果有处理过的数据
-  const method =
-    structuredContent.response.data?.operation?.httpMethod ||
-    structuredContent.request.method;
-
-  const status = structuredContent.response.status;
-  const responseText = JSON.stringify(structuredContent.response.data, null, 2);
-
-  return [
-    {
-      type: "text" as const,
-      text: `${method.toUpperCase()} ${endpoint}\nStatus: ${status}\n\n${responseText}`,
-    },
-  ];
-}
-
-// 工具函数：发送HTTP请求并处理响应
+// 工具函数：发送HTTP请求并返回原始结构
 async function sendHttpRequest(
   endpoint: string,
   options: { method: string; headers?: Record<string, string> }
@@ -52,19 +31,15 @@ async function sendHttpRequest(
     ? ((d) => [JSON.stringify(d, null, 2), d])(await res.json())
     : ((t) => [t, { raw: t }])(await res.text());
 
-  const structuredContent = {
-    request: {
-      url: endpoint,
-      method: options.method,
-      headers: options.headers,
+  // 只返回结构化的原始数据，不做任何处理
+  return {
+    response: {
+      status,
+      headers: resHeaders,
+      data: responseData,
+      text: responseText,
     },
-    response: { status, headers: resHeaders, data: responseData },
   };
-
-  // 自动生成content，无需手动同步
-  const content = generateContentFromStructured(structuredContent, endpoint);
-
-  return { content, structuredContent };
 }
 
 // tool：根据 URL 解析 id 并模拟获取版本详情
@@ -87,8 +62,8 @@ server.registerTool(
     };
     const idMatch = url.match(/[?&#]id=([^&#]+)/);
     const id = idMatch ? decodeURIComponent(idMatch[1]) : null;
-    // ⚠️这里要做一次测试
     if (!id) throw new Error("未在 URL 中找到 id 参数");
+
     const endpoint = `${BASE_URL}/m1/2751432-384917-default/api/api/schema?id=${encodeURIComponent(
       id
     )}`;
@@ -96,40 +71,47 @@ server.registerTool(
       "Content-Type": "application/json",
       token,
     };
+
     // 发送请求并获取原始数据
-    let result = await sendHttpRequest(endpoint, { method: "GET", headers });
-    console.log("原始请求结果:", result);
+    const responseResult = await sendHttpRequest(endpoint, {
+      method: "GET",
+      headers,
+    });
 
     try {
       // 获取响应数据
-      const responseData = result.structuredContent?.response?.data;
-      if (responseData && responseData.operation) {
-        // 在这里进行数据处理
-        const { parameters, requestBody, responses } = responseData.operation;
-        // 1. 检查数据结构并提取有用信息
-        const processedData = {
-          // 定制化：将info的数据与operation数据融合
-          operation: {
-            ...responseData.info,
-            parameters,
-            requestBody,
-            responses,
+      const responseData = responseResult.response?.data?.data;
+      let processedData = null;
+
+      // 构建返回的结构化数据
+      const structuredContent = {
+        response: {
+          status: responseResult.response.status,
+          headers: responseResult.response.headers,
+          data: processedData || responseData || responseResult.response.data,
+        },
+      };
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(structuredContent.response.data, null, 2),
           },
-        };
-        // 更新structuredContent中的响应数据
-        result.structuredContent.response.data = processedData;
-        // 自动生成更新后的content，保持一致性
-        result.content = generateContentFromStructured(
-          result.structuredContent,
-          endpoint
-        );
-      }
+        ],
+        structuredContent: structuredContent.response.data,
+      };
     } catch (error) {
       console.error("数据处理过程中发生错误:", error);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Error occurred: ${(error as Error).message}`,
+          },
+        ],
+        isError: true,
+      };
     }
-    console.log("result", result);
-    // 返回处理后的数据给builder
-    return result;
   }
 );
 

@@ -15,7 +15,8 @@
   "scripts": {
     "build": "tsup",
     "start": "node dist/mcp.js",
-    "inspector": "node --no-warnings ./node_modules/@modelcontextprotocol/inspector/cli/build/cli.js node dist/mcp.js"
+    "inspector": "node --no-warnings ./node_modules/@modelcontextprotocol/inspector/cli/build/cli.js node dist/mcp.js",
+    "start:dev": "ts-node src/mcp.ts"
   },
   "keywords": [],
   "author": "",
@@ -29,6 +30,7 @@
     "@types/node": "^22.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.6.0",
-    "@modelcontextprotocol/inspector": "^0.17.2"
+    "@modelcontextprotocol/inspector": "^0.17.2",
+    "ts-node": "^10.9.1"
   }
 }
