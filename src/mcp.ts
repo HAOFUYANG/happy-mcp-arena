@@ -13,13 +13,32 @@ const server = new McpServer({
 const BASE_URL = "http://127.0.0.1:4523";
 const token = "thisIsAToken";
 
+// 辅助函数：从结构化数据自动生成content
+function generateContentFromStructured(
+  structuredContent: any,
+  endpoint: string
+) {
+  // 优先使用response中的method，如果有处理过的数据
+  const method =
+    structuredContent.response.data?.operation?.httpMethod ||
+    structuredContent.request.method;
+
+  const status = structuredContent.response.status;
+  const responseText = JSON.stringify(structuredContent.response.data, null, 2);
+
+  return [
+    {
+      type: "text" as const,
+      text: `${method.toUpperCase()} ${endpoint}\nStatus: ${status}\n\n${responseText}`,
+    },
+  ];
+}
+
 // 工具函数：发送HTTP请求并处理响应
 async function sendHttpRequest(
   endpoint: string,
   options: { method: string; headers?: Record<string, string> }
 ) {
-  console.log("endpoint :>> ", endpoint);
-  console.log("options :>> ", options);
   const res = await fetch(endpoint, {
     method: options.method,
     headers: options.headers,
@@ -33,7 +52,7 @@ async function sendHttpRequest(
     ? ((d) => [JSON.stringify(d, null, 2), d])(await res.json())
     : ((t) => [t, { raw: t }])(await res.text());
 
-  const result = {
+  const structuredContent = {
     request: {
       url: endpoint,
       method: options.method,
@@ -42,15 +61,10 @@ async function sendHttpRequest(
     response: { status, headers: resHeaders, data: responseData },
   };
 
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: `${options.method} ${endpoint}\nStatus: ${status}\n\n${responseText}`,
-      },
-    ],
-    structuredContent: result,
-  };
+  // 自动生成content，无需手动同步
+  const content = generateContentFromStructured(structuredContent, endpoint);
+
+  return { content, structuredContent };
 }
 
 // tool：根据 URL 解析 id 并模拟获取版本详情
@@ -63,12 +77,11 @@ server.registerTool(
       url: z
         .string()
         .describe(
-          "包含 id 查询参数的完整 URL，例如 http://127.0.0.1:8080/happy-mcp/start/#/detail?id=121242"
+          "包含 id 查询参数的完整 URL，例如 arena-luna.fat.qa.pab.com.cn/#/contract-design/interlayer/details?groupId=41753&id=6539507&apiId=1479644&appId=94345"
         ),
     },
   },
   async (args, _extra) => {
-    console.log("args :>> ", args);
     const { url } = args as {
       url: string;
     };
@@ -83,7 +96,40 @@ server.registerTool(
       "Content-Type": "application/json",
       token,
     };
-    return await sendHttpRequest(endpoint, { method: "GET", headers });
+    // 发送请求并获取原始数据
+    let result = await sendHttpRequest(endpoint, { method: "GET", headers });
+    console.log("原始请求结果:", result);
+
+    try {
+      // 获取响应数据
+      const responseData = result.structuredContent?.response?.data;
+      if (responseData && responseData.operation) {
+        // 在这里进行数据处理
+        const { parameters, requestBody, responses } = responseData.operation;
+        // 1. 检查数据结构并提取有用信息
+        const processedData = {
+          // 定制化：将info的数据与operation数据融合
+          operation: {
+            ...responseData.info,
+            parameters,
+            requestBody,
+            responses,
+          },
+        };
+        // 更新structuredContent中的响应数据
+        result.structuredContent.response.data = processedData;
+        // 自动生成更新后的content，保持一致性
+        result.content = generateContentFromStructured(
+          result.structuredContent,
+          endpoint
+        );
+      }
+    } catch (error) {
+      console.error("数据处理过程中发生错误:", error);
+    }
+    console.log("result", result);
+    // 返回处理后的数据给builder
+    return result;
   }
 );
 

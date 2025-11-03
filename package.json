@@ -8,6 +8,10 @@
   "bin": {
     "happy-mcp-arena": "dist/mcp.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "start": "node dist/mcp.js",
