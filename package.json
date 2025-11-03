@@ -15,14 +15,14 @@
   "scripts": {
     "build": "tsup",
     "start": "node dist/mcp.js",
-    "dev": "DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector node dist/mcp.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "inspector": "node --no-warnings ./node_modules/@modelcontextprotocol/inspector/cli/build/cli.js node dist/mcp.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "commander": "^11.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

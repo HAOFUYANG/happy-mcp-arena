@@ -89,7 +89,7 @@ server.registerTool(
     const id = idMatch ? decodeURIComponent(idMatch[1]) : null;
     // ⚠️这里要做一次测试
     if (!id) throw new Error("未在 URL 中找到 id 参数");
-    const endpoint = `${BASE_URL}/m1/2751432-384917-default/api/api/version/get?id=${encodeURIComponent(
+    const endpoint = `${BASE_URL}/m1/2751432-384917-default/api/api/schema?id=${encodeURIComponent(
       id
     )}`;
     const headers: Record<string, string> = {
